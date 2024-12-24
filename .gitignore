@@ -1,0 +1,7 @@
+# Ignore data files
+data/*.csv
+
+.idea/
+
+booking-challenge.zip
+
