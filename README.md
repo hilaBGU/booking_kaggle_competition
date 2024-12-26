@@ -21,15 +21,24 @@ pip install -r requirements.txt
 ```
 
 ### 3. Download the Dataset
-The dataset for this project is hosted on Kaggle and needs to be downloaded separately. To download the dataset:
-1. Log in to [Kaggle](https://www.kaggle.com/) with your account credentials.
-2. Navigate to the competition page at this link: [Booking Challenge](https://www.kaggle.com/competitions/booking-challenge).
-3. Download the dataset files either manually or using the Kaggle API.  
-   If you use the API, first ensure that your Kaggle API key is set up correctly. Then, download the dataset by running the appropriate command. Extract the dataset files and place them in a folder named `data` inside the repository.
+The dataset for this project is hosted on Kaggle, and the process of downloading and extracting it has been automated. To set up the dataset:
+
+Run the setup.py script:
+
+```bash
+python setup.py
+```
+
+This script will:
+
+Download the dataset from Kaggle.
+Extract it into the data folder inside the repository.
+Install all required Python dependencies.
 
 ### 4. Project Structure
 Once everything is set up, your repository should look like this:
-```
+
+```bash
 booking_kaggle_competition/
 ├── data/                 # Dataset files (download separately)
 ├── notebooks/            # Jupyter notebooks for EDA and experiments
@@ -38,7 +47,6 @@ booking_kaggle_competition/
 ├── main.py               # Main execution script
 ├── requirements.txt      # Python dependencies
 ```
-
 
 
 ### 5. Running the Project
