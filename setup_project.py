@@ -1,37 +1,43 @@
 import os
+import zipfile
+from kaggle.api.kaggle_api_extended import KaggleApi
 
+# Define paths
+project_root = os.getcwd()  # Root directory of the project
+data_dir = os.path.join(project_root, 'data')  # Directory where the data will be stored
+requirements_file = os.path.join(project_root, 'requirements.txt')  # Requirements file path
 
-def create_project_structure(base_path):
-    # Define the folder structure
-    folders = [
-        "data",
-        "notebooks",
-        "scripts",
-        "results"
-    ]
+# Kaggle competition details
+competition_name = "booking-challenge"
+kaggle_zip_path = os.path.join(data_dir, f"{competition_name}.zip")
 
-    # Create the folders
-    for folder in folders:
-        path = os.path.join(base_path, folder)
-        os.makedirs(path, exist_ok=True)
-        print(f"Created folder: {path}")
+# Step 1: Ensure the data directory exists
+print(f"Ensuring data directory exists at: {data_dir}")
+os.makedirs(data_dir, exist_ok=True)
 
-    # Create a README.md file
-    readme_path = os.path.join(base_path, "README.md")
-    if not os.path.exists(readme_path):
-        with open(readme_path, "w") as f:
-            f.write("# Kaggle Project\n\nThis project is for the Booking Challenge competition on Kaggle.")
-        print(f"Created file: {readme_path}")
+# Step 2: Download the dataset from Kaggle
+print(f"Downloading dataset from Kaggle competition: {competition_name}")
+api = KaggleApi()
+api.authenticate()  # Authenticate using the kaggle.json file
+api.competition_download_files(competition_name, path=data_dir)
 
-    # Create a main.py file
-    main_py_path = os.path.join(base_path, "main.py")
-    if not os.path.exists(main_py_path):
-        with open(main_py_path, "w") as f:
-            f.write(
-                """import pandas as pd\n\n# Main pipeline\nif __name__ == "__main__":\n    print("Hello, Kaggle!")""")
-        print(f"Created file: {main_py_path}")
+# Step 3: Extract the dataset
+print(f"Extracting dataset to: {data_dir}")
+with zipfile.ZipFile(kaggle_zip_path, 'r') as zip_ref:
+    zip_ref.extractall(data_dir)
 
+# Step 4: Clean up the zip file
+print(f"Cleaning up the zip file: {kaggle_zip_path}")
+os.remove(kaggle_zip_path)
 
-if __name__ == "__main__":
-    base_dir = os.getcwd()  # Get the current working directory
-    create_project_structure(base_dir)
+print(f"Dataset successfully downloaded and extracted to: {data_dir}")
+
+# Step 5: Install dependencies
+print("Installing Python dependencies...")
+if os.path.exists(requirements_file):
+    os.system(f"pip install -r {requirements_file}")
+else:
+    print(f"No requirements file found at {requirements_file}. Skipping dependency installation.")
+
+# Step 6: Finalize setup
+print("Setup complete! Your project is ready to use.")
