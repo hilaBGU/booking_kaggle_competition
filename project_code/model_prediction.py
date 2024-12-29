@@ -9,15 +9,16 @@ from tqdm import tqdm
 import time
 
 
-def load_and_preprocess_data(reviews_path, users_path, matches_path):
+def load_and_preprocess_data(reviews_path, users_path, matches_path=None):
     """
     Load and preprocess review, user, and match data.
     """
     start_time = time.time()
-    print("Loading data...")
+    print(f"Loading data: {reviews_path}, {users_path}, {matches_path or ''}")
+
     reviews = pd.read_csv(reviews_path)
     users = pd.read_csv(users_path)
-    matches = pd.read_csv(matches_path)
+    matches = pd.read_csv(matches_path) if matches_path else None
 
     print("Preprocessing data...")
     reviews['review_title'] = reviews['review_title'].fillna("No Title")
@@ -27,8 +28,12 @@ def load_and_preprocess_data(reviews_path, users_path, matches_path):
     users['guest_country'] = users['guest_country'].fillna("Unknown")
     users['room_nights'] = users['room_nights'].apply(lambda x: min(x, 30))
 
-    data = pd.merge(matches, reviews, on='review_id', how='inner')
-    data = pd.merge(data, users, on='user_id', how='inner')
+    data = pd.merge(matches, reviews, on='review_id', how='inner') if matches is not None else reviews
+    if matches is not None:
+        data = pd.merge(data, users, on='user_id', how='inner')
+    else:
+        data = pd.merge(reviews, users, on='accommodation_id', how='inner')
+
     data['text'] = data['review_title'] + " " + data['review_positive'] + " " + data['review_negative']
 
     elapsed_time = time.time() - start_time
@@ -89,24 +94,6 @@ def combine_features(X_text, X_numeric, X_categorical):
     return hstack([X_text, X_numeric, X_categorical])
 
 
-def train_model(X_train, y_train):
-    """
-    Train a RandomForestClassifier model.
-    """
-    print("Training the model...")
-    start_time = time.time()
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-
-    with tqdm(total=len(y_train), desc="Training progress") as pbar:
-        for _ in range(1):  # Simulating iteration-based progress (for a single fit operation, you can replace this)
-            model.fit(X_train, y_train)
-            pbar.update(len(y_train))
-
-    elapsed_time = time.time() - start_time
-    print(f"Model training completed in {elapsed_time:.2f} seconds.")
-    return model
-
-
 def calculate_mrr_at_k(y_true, y_pred, k=10):
     """
     Calculate Mean Reciprocal Rank at K (MRR@K).
@@ -153,43 +140,81 @@ if __name__ == "__main__":
 
     print("Starting pipeline...")
 
-    # Load and preprocess data
-    data = load_and_preprocess_data("../data/train_reviews.csv",
-                                    "../data/train_users.csv",
-                                    "../data/train_matches.csv")
+    # Load training data
+    train_data_full = load_and_preprocess_data("../data/train_reviews.csv",
+                                               "../data/train_users.csv",
+                                               "../data/train_matches.csv")
 
-    # Split data by users
-    train_data, test_data = split_data_by_users(data)
+    # Split into train and test
+    train_data, test_data = split_data_by_users(train_data_full)
 
-    # Prepare train and test features
+    # Prepare train features
     X_train_text, X_train_numeric, X_train_categorical, vectorizer = prepare_features(train_data)
-    X_test_text, X_test_numeric, X_test_categorical, _ = prepare_features(test_data, vectorizer=vectorizer)
-
     X_train = combine_features(X_train_text, X_train_numeric, X_train_categorical)
-    X_test = combine_features(X_test_text, X_test_numeric, X_test_categorical)
-
     y_train = train_data['user_id'].values
-    y_test = test_data['user_id'].values
 
     # Train model
-    model = train_model(X_train, y_train)
+    print("Training the model...")
+    start_time = time.time()
+    model = RandomForestClassifier(n_estimators=100, random_state=42)
 
-    # Predict probabilities and determine top-10 predictions
-    print("Predicting probabilities...")
-    y_prob = model.predict_proba(X_test)
-    top_k_predictions = np.argsort(y_prob, axis=1)[:, -10:][:, ::-1]  # Reverse for ranking
+    with tqdm(total=len(y_train), desc="Training progress") as pbar:
+        for _ in range(1):  # Simulating iteration-based progress (for a single fit operation, you can replace this)
+            model.fit(X_train, y_train)
+            pbar.update(len(y_train))
 
-    # Evaluate model using MRR@10
-    mrr_at_10 = calculate_mrr_at_k(y_test, top_k_predictions)
-    print(f"MRR@10: {mrr_at_10}")
+    elapsed_time = time.time() - start_time
+    print(f"Model training completed in {elapsed_time:.2f} seconds.")
 
-    # Prepare submission file
+    # Prepare test features
+    X_test_text, X_test_numeric, X_test_categorical, _ = prepare_features(test_data, vectorizer=vectorizer)
+    X_test = combine_features(X_test_text, X_test_numeric, X_test_categorical)
+    y_test = test_data['user_id'].values
+
+    # Predict and evaluate on test set
+    print("Predicting on test set...")
+    y_test_prob = model.predict_proba(X_test)
+    test_top_k_predictions = np.argsort(y_test_prob, axis=1)[:, -10:][:, ::-1]
+    test_mrr_at_10 = calculate_mrr_at_k(y_test, test_top_k_predictions)
+    print(f"Test MRR@10: {test_mrr_at_10:.4f}")
+
+    # Load validation data
+    val_data = load_and_preprocess_data("../data/val_reviews.csv",
+                                        "../data/val_users.csv",
+                                        "../data/val_matches.csv")
+
+    # Prepare validation features
+    X_val_text, X_val_numeric, X_val_categorical, _ = prepare_features(val_data, vectorizer=vectorizer)
+    X_val = combine_features(X_val_text, X_val_numeric, X_val_categorical)
+    y_val = val_data['user_id'].values
+
+    # Predict and evaluate on validation set
+    print("Predicting on validation set...")
+    y_val_prob = model.predict_proba(X_val)
+    val_top_k_predictions = np.argsort(y_val_prob, axis=1)[:, -10:][:, ::-1]
+    val_mrr_at_10 = calculate_mrr_at_k(y_val, val_top_k_predictions)
+    print(f"Validation MRR@10: {val_mrr_at_10:.4f}")
+
+    # Load test data
+    test_data = load_and_preprocess_data("../data/test_reviews.csv",
+                                         "../data/test_users.csv")
+
+    # Prepare test features
+    X_test_text, X_test_numeric, X_test_categorical, _ = prepare_features(test_data, vectorizer=vectorizer)
+    X_test = combine_features(X_test_text, X_test_numeric, X_test_categorical)
+
+    # Predict and prepare submission for test set
+    print("Predicting on submission-test set...")
+    y_test_prob = model.predict_proba(X_test)
+    test_top_k_predictions = np.argsort(y_test_prob, axis=1)[:, -10:][:, ::-1]
+
+    print("Preparing test submission file...")
     prepare_submission_file(
         accommodation_ids=test_data['accommodation_id'].values,
         user_ids=test_data['user_id'].values,
-        top_k_predictions=top_k_predictions,
-        review_ids=data['review_id'].values,
-        output_path="submission.csv"
+        top_k_predictions=test_top_k_predictions,
+        review_ids=test_data['review_id'].values,
+        output_path="test_submission.csv"
     )
 
     print("Pipeline completed.")
