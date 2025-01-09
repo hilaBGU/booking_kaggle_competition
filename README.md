@@ -1,5 +1,10 @@
 # Booking Kaggle Competition
 
+### Team Name: ### H&R
+### Team Members: ### 
+Hila Zylfi
+Ruben Sasson
+
 This repository contains the code and resources for the Booking Kaggle competition. Due to file size limitations, the dataset is not included in this repository and must be downloaded separately.
 
 ## Prerequisites

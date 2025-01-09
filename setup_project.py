@@ -4,7 +4,7 @@ from kaggle.api.kaggle_api_extended import KaggleApi
 
 # Define paths
 project_root = os.getcwd()  # Root directory of the project
-data_dir = os.path.join(project_root, 'data')  # Directory where the data will be stored
+data_dir = os.path.join(project_root, 'data', 'raw_data')  # Directory where the data will be stored
 requirements_file = os.path.join(project_root, 'requirements.txt')  # Requirements file path
 
 # Kaggle competition details

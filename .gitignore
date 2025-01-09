@@ -1,6 +1,8 @@
 # Ignore data files
 data/*.csv
 
+notebooks/utils/.ipynb_checkpoints
+
 .idea/
 
 booking-challenge.zip
